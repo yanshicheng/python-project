@@ -1,4 +1,4 @@
-from base.response import json_api_response
+from base.response import json_ok_response, json_error_response
 from base.views import BaseModelViewSet
 from ..serializers import PermissionsSerializer
 from ..models import Permissions
@@ -19,17 +19,17 @@ class PermissionsViewSet(BaseModelViewSet):
                 for menu in top_data:
                     menu["children"] = list(self.queryset.filter(pid=menu['id']).values())
                     childrens.append(menu)
-                return json_api_response(data=childrens)
+                return json_ok_response(data=childrens)
             elif int(pid) == 0:
                 queryset = self.queryset.filter(pid=pid)
                 serializer = self.get_serializer(queryset, many=True)
-                return json_api_response(data=serializer.data)
+                return json_ok_response(data=serializer.data)
             else:
                 if self.queryset.filter(id=pid):
                     queryset = self.queryset.filter(pid=pid)
                     serializer = self.get_serializer(queryset, many=True)
-                    return json_api_response(data=serializer.data)
+                    return json_ok_response(data=serializer.data)
                 else:
-                    return json_api_response(code=-1, data='error', message='pid不存在')
+                    return json_error_response(message='pid不存在')
         except Exception as e:
-            return json_api_response(code=-1, data='error', message=f'error: {str(e)}')
+            return json_error_response(message=f'error: {str(e)}')

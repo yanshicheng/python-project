@@ -1,12 +1,12 @@
 from base.views import BaseModelViewSet
 from ..serializers import UserProfileSerializer, UserManagerSerializer
 from ..models import UserProfile
-from base.response import json_api_response
+from base.response import json_ok_response, json_error_response
 from rest_framework.views import APIView
 from rest_framework.decorators import action
-from django.contrib import auth
 from apps.rbac.auth.jwt_auth import create_token, analysis_token
 
+from django.contrib import auth
 
 class UserProfileViewSet(BaseModelViewSet):
     queryset = UserProfile.objects.all()
@@ -22,11 +22,11 @@ class UserProfileViewSet(BaseModelViewSet):
                 queryset = UserProfile.objects.filter(email=user_info['user_info']['email'],
                                                       name=user_info['user_info']['username']).first()
                 serializer = self.get_serializer(queryset)
-                return json_api_response(data=serializer.data)
+                return json_ok_response(data=serializer.data)
             except Exception as e:
-                return json_api_response(code=-1, message=str(e), data='error')
+                return json_error_response(message=str(e))
         else:
-            return json_api_response(code=-1, message='token 不能为空', data='error')
+            return json_error_response(message='token 不能为空', )
 
     @action(methods=['post'], detail=True)
     def reset_password(self, request, pk):
@@ -41,11 +41,11 @@ class UserProfileViewSet(BaseModelViewSet):
             if user_obj:
                 user_obj.set_password(new_pwd)
                 user_obj.save()
-                return json_api_response(data=f'{user_obj.email} 账户密码修改成功!')
+                return json_ok_response(data=f'{user_obj.email} 账户密码修改成功!')
             else:
-                return json_api_response(code=-1, data='error', message='用户或密码错误,请检查重试!')
+                return json_error_response(message='用户或密码错误,请检查重试!')
         else:
-            return json_api_response(code=-1, data='error', message='<email>,<old_password>,<new_password>为必传参数.')
+            return json_error_response(message='<email>,<old_password>,<new_password>为必传参数.')
     # def create(self, request):
     #     serializer = self.get_serializer(data=request.data)
     #     serializer.is_valid(raise_exception=True)
@@ -66,9 +66,9 @@ class UserManagerViewSet(BaseModelViewSet):
             user_obj = serializer.save()
             user_obj.set_password(request.data.get('password'))
             user_obj.save()
-            return json_api_response(data=serializer.data)
+            return json_ok_response(data=serializer.data)
         except Exception as e:
-            return json_api_response(code=-1, message=str(e), data='error')
+            return json_error_response(message=str(e))
 
 
 class LoginViewSet(APIView):
@@ -101,9 +101,9 @@ class LoginViewSet(APIView):
                     'roles': [role.title for role in user_obj.roles.all()]
                 }
                 token = create_token({'permission': permission_list, 'user_info': user_info})
-                return json_api_response(data=token)
-            return json_api_response(code=-1, message='用户名或密码错误,请重试!', data='error')
-        return json_api_response(code=-1, message='email和password为必传参数!', data='error')
+                return json_ok_response(data=token)
+            return json_error_response(message='用户名或密码错误,请重试!')
+        return json_error_response(message='email和password为必传参数!')
 
 
 class UserInfoViewSet(APIView):
@@ -112,4 +112,4 @@ class UserInfoViewSet(APIView):
 
 class LogoutViewSet(APIView):
     def post(self, request):
-        return json_api_response(data='注销成功')
+        return json_ok_response(data='注销成功')

@@ -1,104 +1,91 @@
-from rest_framework import viewsets
-from rest_framework.decorators import action
+from .response import json_ok_response
+
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.views import APIView
+from rest_framework import status
 from rest_framework.response import Response
-from base.response import json_api_response
-# import logging
-# logger = logging.getLogger('views')
+from rest_framework.mixins import CreateModelMixin
+from rest_framework.filters import SearchFilter
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.permissions import IsAuthenticated
 
-from django.shortcuts import get_object_or_404 as _get_object_or_404
+from rest_framework.parsers import JSONParser
+from rest_framework.parsers import FormParser
+from rest_framework.parsers import MultiPartParser
+from rest_framework.renderers import JSONRenderer
+from rest_framework.renderers import AdminRenderer
+from rest_framework.renderers import BrowsableAPIRenderer
 
-from rest_framework import mixins, views
-from rest_framework.settings import api_settings
-
-
-class BaseModelNoListViewSet(viewsets.ModelViewSet):
-
-    @action(methods=['get'], detail=False)
-    def get_table_info(self, request):
-        '''
-        获取表字段名和过滤选项
-        '''
-        data = {}
-        if hasattr(self.queryset.model(), 'get_table_info'):
-            data = self.queryset.model().get_table_info()
-
-        return Response(data)
+# __all__ = (
+#     "BaseModelViewSet",
+#     "BaseApiView",
+#     "TreeModelViewSet",
+# )
 
 
-class BaseModelViewSet(viewsets.ModelViewSet):
-    '''
-        list排序 需要重新定义排序情况
-    '''
+class BaseModelViewSet(ModelViewSet):
+    """
+        视图集合基类
+    """
 
-    def list(self, request):
-        try:
-            ordering = request.query_params.get('ordering', '')
-            ordering = ordering.replace('+', '').strip()
-            if ordering:
-                if self.serializer_class is None:
-                    queryset = self.filter_queryset(self.get_serializer_class().Meta.model.objects.order_by(ordering))
-                else:
-                    queryset = self.filter_queryset(self.serializer_class.Meta.model.objects.order_by(ordering))
-            else:
-                queryset = self.filter_queryset(self.get_queryset())
-
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                return self.get_paginated_response(serializer.data)
-            serializer = self.get_serializer(queryset, many=True)
-            return json_api_response(data=serializer.data)
-        except Exception as e:
-            return json_api_response(code=-1, message=str(e), data='error')
-
-    @action(methods=['get'], detail=False)
-    def get_table_info(self, request):
-        '''
-        获取表字段名和过滤选项
-        '''
-        data = {}
-        if hasattr(self.get_queryset().model(), 'get_table_info'):
-            data = self.get_queryset().model().get_table_info()
-
-        return json_api_response(data)
+    # authentication_classes = [SessionAuthentication, JSONWebTokenAuthentication]
+    # permission_classes = [IsAuthenticated, ]
+    # # permission_classes = [ApiRBACPermission, ]
+    # pagination_class = CustomPageNumberPagination
+    # parser_classes = [JSONParser, FormParser, MultiPartParser]
+    # renderer_classes = [JSONRenderer, BrowsableAPIRenderer, AdminRenderer, CSVRenderer]
+    # filter_backends = (SearchFilter, DjangoFilterBackend)
+    # search_fields = []  # search=<field>
 
     def create(self, request, *args, **kwargs):
-        try:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return json_api_response(data=serializer.data)
-        except Exception as e:
-            return json_api_response(code=-1, message=str(e), data='error')
+        response = super(BaseModelViewSet, self).create(request, *args, **kwargs)
+        return json_ok_response(response.data)
 
     def update(self, request, *args, **kwargs):
-
-        try:
-            partial = kwargs.pop('partial', False)
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data, partial=partial)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            if getattr(instance, '_prefetched_objects_cache', None):
-                instance._prefetched_objects_cache = {}
-            return json_api_response(data=serializer.data)
-        except Exception as e:
-            return json_api_response(code=-1, message=str(e), data='error')
-
-    def retrieve(self, request, *args, **kwargs):
-        # 封装的 get_object 拿对象
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return json_api_response(serializer.data)
+        response = super(BaseModelViewSet, self).update(request, *args, **kwargs)
+        return json_ok_response(response.data)
 
     def destroy(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-            instance.delete()
-            return json_api_response()
-        except Exception as e:
-            return json_api_response(code=-1, data='eroor', message=f'ERROR: {str(e)}')
+        response = super(BaseModelViewSet, self).destroy(request, *args, **kwargs)
+        return json_ok_response(response.data)
+
+    def list(self, request, *args, **kwargs):
+        response = super(BaseModelViewSet, self).list(request, *args, **kwargs)
+        return json_ok_response(response.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        response = super(BaseModelViewSet, self).retrieve(request, *args, **kwargs)
+        return json_ok_response(response.data)
 
 
-class BaseGenericViewSet(viewsets.GenericViewSet):
-    pass
+class BaseApiView(APIView):
+    """
+        APIView视图类
+    """
+    # authentication_classes = [SessionAuthentication, JSONWebTokenAuthentication]
+    # permission_classes = [IsAuthenticated, ]
+
+
+# class TreeModelViewSet(BaseModelViewSet):
+#
+#     def list(self, request, *args, **kwargs):
+#         queryset = self.filter_queryset(self.get_queryset())
+#         page = self.paginate_queryset(queryset)
+#         s = self.get_serializer(queryset, many=True)
+#         response = []
+#         try:
+#             tree_dict = {item['id']: item for item in s.data}
+#             for i in tree_dict:
+#                 if tree_dict[i]['pid']:
+#                     pid = tree_dict[i]['pid']
+#                     parent = tree_dict[pid]
+#                     parent.setdefault('children', []).append(tree_dict[i])
+#                 else:
+#                     response.append(tree_dict[i])
+#         except KeyError:
+#             response = s.data
+#         if page is not None:
+#             response = self.get_paginated_response(response)
+#             return json_ok_response(response.data)
+#         return json_ok_response(response)

@@ -1,4 +1,4 @@
-from base.response import json_api_response
+from base.response import json_ok_response, json_error_response
 from base.views import BaseModelViewSet
 from ..serializers import RolesSerializer
 from ..models import Roles
